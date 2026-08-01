@@ -231,9 +231,30 @@
 
   .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* install banner */
+  .install-banner{position:fixed;left:50%;top:14px;transform:translateX(-50%);width:min(440px,calc(100% - 28px));background:linear-gradient(135deg,#a78bfa,#f472b6);color:#fff;border-radius:16px;padding:13px 15px;box-shadow:0 12px 32px rgba(139,92,246,.35);z-index:30;display:flex;gap:11px;align-items:center;animation:slideDown .3s ease}
+  .install-banner.hide{display:none}
+  .install-banner .ib-ic{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:21px;flex:0 0 38px}
+  .install-banner .ib-body{flex:1;min-width:0}
+  .install-banner .ib-title{font-size:14.5px;font-weight:700}
+  .install-banner .ib-desc{font-size:12.5px;opacity:.94;margin-top:3px;line-height:1.5}
+  .install-banner .ib-btn{background:#fff;color:#7c3aed;border:0;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .install-banner .ib-close{background:transparent;border:0;color:rgba(255,255,255,.9);font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
+  @keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  @media(max-width:680px){.install-banner{top:62px;width:calc(100% - 22px)}}
 </style>
 </head>
 <body>
+<div class="install-banner hide" id="installBanner">
+  <div class="ib-ic">📲</div>
+  <div class="ib-body">
+    <div class="ib-title">装到主屏幕更好用</div>
+    <div class="ib-desc"></div>
+  </div>
+  <button class="ib-btn" id="ibInstallBtn">好的</button>
+  <button class="ib-close" id="ibClose" aria-label="关闭">&times;</button>
+</div>
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
@@ -1037,6 +1058,50 @@ document.getElementById('renameMask').addEventListener('click',e=>{if(e.target.i
 document.getElementById('petEmoji').onclick=()=>{if(Math.random()>.5)toast('摸摸头～ 心情 +1 ✨');state.pet.mood=clamp(state.pet.mood+1,0,100);save();renderPet();};
 renderPet();
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+
+/* ---------- 添加到主屏幕引导 ---------- */
+(function(){
+  var KEY='baobao_install_dismissed';
+  function dismissed(){try{return localStorage.getItem(KEY)==='1';}catch(e){return false;}}
+  function isStandalone(){
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true;
+  }
+  var isIOS=(/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) ||
+            (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  var deferred=null;
+  function hide(){
+    var b=document.getElementById('installBanner');
+    if(b)b.classList.add('hide');
+    try{localStorage.setItem(KEY,'1');}catch(e){}
+  }
+  function show(mode){
+    if(isStandalone()||dismissed())return;
+    var b=document.getElementById('installBanner');
+    if(!b)return;
+    var desc,label,act;
+    if(mode==='installable'&&deferred){
+      desc='装到主屏幕，以后像 App 一样一键打开打卡。';
+      label='安装到主屏幕';
+      act=function(){deferred.prompt();deferred.userChoice.then(function(){deferred=null;hide();});};
+    }else if(isIOS){
+      desc='点 Safari 底部的「分享」按钮 → 选「添加到主屏幕」，就能放桌面啦。';
+      label='好的';
+      act=hide;
+    }else{
+      desc='把本页添加到主屏幕，下次像 App 一样一键打开。';
+      label='好的';
+      act=hide;
+    }
+    b.querySelector('.ib-desc').textContent=desc;
+    var ib=document.getElementById('ibInstallBtn');
+    ib.textContent=label;ib.onclick=act;
+    b.classList.remove('hide');
+  }
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferred=e;show('installable');});
+  window.addEventListener('appinstalled',function(){hide();});
+  document.getElementById('ibClose').onclick=hide;
+  window.addEventListener('load',function(){if(!deferred)show('manual');});
+})();
 
 </script>
 </body>
