@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>包包的打卡</title>
+<meta name="theme-color" content="#8b5cf6" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="包包打卡" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<style>
+  :root{
+    --bg:#f5f0ff; --card:#ffffff; --ink:#1f2a44; --muted:#7a86a3;
+    --primary:#8b5cf6; --primary-soft:#f0eaff;
+    --accent:#ec4899; --accent-soft:#ffe4f3;
+    --ok:#2ecc71; --warn:#ff9f43; --line:#ebe6f5;
+    --shadow:0 8px 24px rgba(31,42,68,.08);
+    --r:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .app{display:flex;min-height:100vh}
+
+  /* Sidebar */
+  .sidebar{width:212px;flex:0 0 212px;background:var(--card);border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 10px 18px}
+  .brand .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#7aa0ff);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .brand b{font-size:16px}
+  .brand small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+  .nav-btn{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;padding:12px 12px;border-radius:12px;color:var(--ink);font-size:14.5px;cursor:pointer;text-align:left;transition:.15s}
+  .nav-btn svg{width:20px;height:20px;flex:0 0 20px}
+  .nav-btn:hover{background:var(--bg)}
+  .nav-btn.active{background:var(--primary-soft);color:var(--primary);font-weight:600}
+  .nav-spacer{flex:1}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;align-items:center;gap:14px;padding:18px 26px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .topbar h1{font-size:19px}
+  .topbar .date{color:var(--muted);font-size:13px}
+  .topbar .spacer{flex:1}
+  .add-top{background:var(--primary);color:#fff;border:0;border-radius:11px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .add-top:hover{background:#3d6bf0}
+
+  .content{padding:24px 26px 40px;max-width:1000px;width:100%}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .panel{background:var(--card);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-top:18px}
+  .panel h2{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .panel h2 .tag{font-size:12px;color:var(--muted);font-weight:400}
+  .empty{color:var(--muted);text-align:center;padding:34px 0;font-size:14px;line-height:1.8}
+
+  /* Today item */
+  .ci{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line)}
+  .ci:last-child{border-bottom:0}
+  .ci .emoji{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 46px}
+  .ci .body{flex:1;min-width:0}
+  .ci .title{font-size:15.5px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ci .meta{color:var(--muted);font-size:12.5px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .badge{background:var(--primary-soft);color:var(--primary);padding:2px 9px;border-radius:999px;font-size:11.5px}
+  .badge.over{background:#fff0e2;color:#c9701a}
+  .badge.streak{background:#fff7e0;color:#a9790a}
+  .check{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);flex:0 0 30px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;background:#fff}
+  .ci.done .check{background:var(--ok);border-color:var(--ok)}
+  .ci.done .check svg{width:17px;height:17px}
+  .ci.done .title{color:var(--muted)}
+  .ci.done .emoji{opacity:.55}
+  .ci .del{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:17px;padding:4px 8px;border-radius:8px}
+  .ci .del:hover{background:#ffeaea;color:#e74c3c}
+
+  /* progress ring-ish bar */
+  .ring{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+  .ring .num{font-size:30px;font-weight:800}
+  .ring .sub{color:var(--muted);font-size:13px}
+
+  /* My items */
+  .mi{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line)}
+  .mi:last-child{border-bottom:0}
+  .mi .emoji{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 42px}
+  .mi .body{flex:1;min-width:0}
+  .mi .title{font-size:15px;font-weight:600}
+  .mi .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .mi button.ghost{background:var(--bg);border:0;color:var(--ink);border-radius:9px;padding:7px 12px;font-size:13px;cursor:pointer;margin-left:6px}
+  .mi button.ghost:hover{background:#e3e9f7}
+  .mi button.del{background:transparent;color:var(--muted)}
+  .mi button.del:hover{background:#ffeaea;color:#e74c3c}
+
+  /* stats */
+  .grid{display:grid;gap:16px}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:800}
+  .stat .l{color:var(--muted);font-size:13px;margin-top:2px}
+  .scard{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px}
+  .scard .top{display:flex;align-items:center;gap:12px}
+  .scard .emoji{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;flex:0 0 40px}
+  .scard .name{font-size:15px;font-weight:600}
+  .scard .freq{color:var(--muted);font-size:12px}
+  .scard .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+  .scard .row b{color:var(--ink);font-size:15px}
+  .bar{height:10px;background:var(--line);border-radius:999px;overflow:hidden}
+  .bar>div{height:100%;background:linear-gradient(90deg,var(--primary),#7aa0ff);transition:.4s}
+
+  /* modal */
+  .mask{position:fixed;inset:0;background:rgba(31,42,68,.4);display:none;align-items:flex-start;justify-content:center;z-index:40;padding:40px 16px;overflow:auto}
+  .mask.show{display:flex}
+  .modal{background:#fff;border-radius:20px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+  .modal h3{font-size:18px;margin-bottom:18px}
+  .fld{margin-bottom:15px}
+  .fld label{display:block;font-size:13px;color:var(--muted);margin-bottom:7px}
+  .fld input[type=text],.fld select,.fld input[type=time],.fld input[type=number]{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 13px;font-size:14px;background:#fbfcff;color:var(--ink)}
+  .fld .hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .swatches{display:flex;gap:10px;flex-wrap:wrap}
+  .sw{width:32px;height:32px;border-radius:9px;cursor:pointer;border:3px solid transparent}
+  .sw.sel{border-color:var(--ink)}
+  .days{display:flex;gap:7px;flex-wrap:wrap}
+  .days label{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+  .days .d{width:38px;height:38px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);border:1px solid var(--line)}
+  .days input{display:none}
+  .days input:checked+.d{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .modal-actions{display:flex;gap:10px;margin-top:8px}
+  .btn{border:0;border-radius:11px;padding:12px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;flex:1}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:#3d6bf0}
+  .btn-ghost{background:var(--bg);color:var(--ink)}
+  .btn-ghost:hover{background:#e3e9f7}
+
+  /* backup */
+  .bk-btn{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+  .bk-btn:hover{background:#e3e9f7}
+  .bk-actions{display:flex;flex-direction:column;gap:12px;margin:6px 0 14px}
+  .bk-card{display:flex;gap:14px;align-items:flex-start;background:var(--bg);border-radius:14px;padding:14px}
+  .bk-card .ic{width:40px;height:40px;border-radius:11px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;flex:0 0 40px}
+  .bk-card .ic svg{width:20px;height:20px}
+  .bk-card .body{flex:1;min-width:0}
+  .bk-card .t{font-size:14.5px;font-weight:600}
+  .bk-card .d{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6}
+  .bk-card .acts{margin-top:10px;display:flex;gap:10px}
+  .bk-note{font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:8px}
+  .fld input[type=file]{font-size:13px}
+
+  /* mobile bottom tab */
+  .bottomtab{display:none}
+  @media(max-width:680px){
+    .app{flex-direction:column}
+    .sidebar{display:none}
+    .bottomtab{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
+    .bottomtab button{flex:1;border:0;background:transparent;color:var(--muted);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0}
+    .bottomtab button svg{width:22px;height:22px}
+    .bottomtab button.active{color:var(--primary)}
+    .content{padding:18px 16px 90px}
+    .topbar{padding:14px 16px}
+    .add-top{display:none}
+  }
+  /* calendar */
+  .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .cal-head .mv{background:var(--bg);border:0;border-radius:10px;width:38px;height:38px;font-size:18px;cursor:pointer;color:var(--ink)}
+  .cal-head .mv:hover{background:#e3e9f7}
+  .cal-head .ml{font-size:16px;font-weight:700;text-align:center;min-width:120px}
+  .cal-head .today-link{background:var(--primary-soft);color:var(--primary);border:0;border-radius:10px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer}
+  .cal-head .today-link:hover{background:#dbe6ff}
+  .cal-sel{margin-left:auto;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;background:#fbfcff;color:var(--ink)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+  .cal-grid .wd{text-align:center;color:var(--muted);font-size:12px;padding:4px 0}
+  .cal-cell{border-radius:12px;min-height:56px;padding:7px;font-size:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--line);background:#fbfcff;transition:.12s}
+  .cal-cell:hover{border-color:var(--primary)}
+  .cal-cell.blank{background:transparent;border:0;cursor:default}
+  .cal-cell .dnum{font-weight:600;color:var(--ink)}
+  .cal-cell.done{background:#eafaf0;border-color:#bdeccd}
+  .cal-cell.done .dnum{color:#1e9e57}
+  .cal-cell.partial{background:#fff7e0;border-color:#ffe39a}
+  .cal-cell.partial .dnum{color:#a9790a}
+  .cal-cell.missed{background:#ffeef0;border-color:#ffc9cf}
+  .cal-cell.missed .dnum{color:#e74c3c}
+  .cal-cell.none{background:#f4f6fb;border-color:#eef1f7;cursor:default}
+  .cal-cell .mark{font-size:13px;margin-top:2px;font-weight:700}
+  .cal-legend{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin-top:14px}
+  .cal-legend span{display:flex;align-items:center;gap:6px}
+  .cal-legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+  .cal-detail{margin-top:6px}
+  .cal-detail h3{font-size:14px;margin:6px 0 10px}
+
+  /* pet */
+  .hero{background:linear-gradient(135deg,#a78bfa,#f472b6);border-radius:24px;padding:22px;color:#fff;box-shadow:0 16px 40px rgba(139,92,246,.25);position:relative;overflow:hidden;margin-bottom:18px}
+  .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.25),transparent 40%);pointer-events:none}
+  .hero-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+  .hero-top h2{font-size:18px;text-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .points-pill{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.25);backdrop-filter:blur(6px);border-radius:999px;padding:7px 14px;font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.3)}
+  .pet-stage{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:22px 0 12px}
+  .pet-emoji{font-size:120px;line-height:1;filter:drop-shadow(0 12px 24px rgba(0,0,0,.15));animation:bounce 2.5s ease-in-out infinite;cursor:pointer;transition:.2s}
+  .pet-emoji:active{transform:scale(.92)}
+  .pet-emoji.sleep{animation:none;filter:grayscale(.4) drop-shadow(0 12px 24px rgba(0,0,0,.15))}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .pet-name{font-size:22px;font-weight:800;margin-top:8px;text-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .pet-lvl{background:rgba(255,255,255,.3);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;margin-top:6px;border:1px solid rgba(255,255,255,.35)}
+  .pet-speech{background:rgba(255,255,255,.9);color:var(--ink);border-radius:14px;padding:10px 16px;font-size:13px;font-weight:600;margin-top:14px;max-width:80%;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+  .bars{display:grid;gap:10px;margin-top:16px;position:relative;z-index:1}
+  .bar-row{display:flex;align-items:center;gap:10px;font-size:13px}
+  .bar-row .icon{width:24px;text-align:center}
+  .bar-row .track{flex:1;height:10px;background:rgba(255,255,255,.35);border-radius:999px;overflow:hidden}
+  .bar-row .fill{height:100%;border-radius:999px;transition:.4s}
+  .bar-row .val{min-width:36px;text-align:right;font-weight:700;font-size:12px}
+  .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;position:relative;z-index:1}
+  .act-btn{border:0;border-radius:14px;padding:12px 6px;background:rgba(255,255,255,.9);color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  .act-btn:hover{background:#fff;transform:translateY(-2px)}
+  .act-btn:active{transform:translateY(0)}
+  .act-btn .e{font-size:24px}
+  .act-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+  .pet-extras{display:flex;gap:10px;margin-top:14px;position:relative;z-index:1}
+  .pet-extras button{flex:1;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);color:#fff;border-radius:12px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px)}
+  .pet-extras button:hover{background:rgba(255,255,255,.3)}
+
+  .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+  .shop-card{background:var(--card);border-radius:18px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:var(--shadow);border:2px solid transparent;transition:.15s;cursor:pointer}
+  .shop-card:hover{border-color:var(--primary-soft);transform:translateY(-2px)}
+  .shop-card.owned{border-color:#2ecc71;background:#f0fff6}
+  .shop-card .pe{font-size:64px;line-height:1}
+  .shop-card .pn{font-size:15px;font-weight:700}
+  .shop-card .pd{font-size:12px;color:var(--muted);text-align:center;min-height:36px}
+  .shop-card .pc{color:#a9790a;font-weight:800;font-size:14px}
+  .shop-card .pc svg{width:14px;height:14px}
+  .shop-card .st{font-size:12px;color:#2ecc71;font-weight:700;margin-top:-4px}
+
+  .pet-name-input{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 13px;font-size:14px;margin-top:8px}
+
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">🐾</div>
+      <div><b>包包的打卡</b><small>打卡养宠物</small></div>
+    </div>
+    <button class="nav-btn" data-view="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>
+      今日打卡
+    </button>
+    <button class="nav-btn" data-view="items">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      我的项目
+    </button>
+    <button class="nav-btn" data-view="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+      统计
+    </button>
+    <button class="nav-btn" data-view="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+      日历
+    </button>
+    <button class="nav-btn active" data-view="pet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 0 0 9-9c0-4.97-4.03-9-9-9s-9 4.03-9 9 9 9 9 9z"/><path d="M9 12h.01M15 12h.01M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/></svg>
+      我的宠物
+    </button>
+    <button class="nav-btn" id="navBk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      备份/恢复
+    </button>
+    <div class="nav-spacer"></div>
+    <button class="nav-btn" id="sidebarAdd" style="background:var(--primary-soft);color:var(--primary);font-weight:600">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      添加打卡项目
+    </button>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="viewTitle">今日打卡</h1>
+        <div class="date" id="todayDate"></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="bk-btn" id="bkBtn" title="备份与恢复">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        备份/恢复
+      </button>
+      <button class="add-top" id="topAdd">+ 添加项目</button>
+    </div>
+
+    <div class="content">
+      <!-- PET -->
+      <section class="view active" id="view-pet">
+        <div class="hero">
+          <div class="hero-top">
+            <h2>我的宠物</h2>
+            <div class="points-pill">🌟 <span id="pointNum">0</span> 积分</div>
+          </div>
+          <div class="pet-stage">
+            <div class="pet-emoji" id="petEmoji">🐰</div>
+            <div class="pet-name" id="petName">兔斯基</div>
+            <div class="pet-lvl" id="petLvl">Lv.1 新朋友</div>
+            <div class="pet-speech" id="petSpeech">主人，今天也要打卡哦～</div>
+          </div>
+          <div class="bars">
+            <div class="bar-row"><span class="icon">⭐</span><div class="track"><div class="fill" id="barExp" style="width:0;background:#ffd700"></div></div><span class="val" id="valExp">0/50</span></div>
+            <div class="bar-row"><span class="icon">🍖</span><div class="track"><div class="fill" id="barFull" style="width:0;background:#ff9f43"></div></div><span class="val" id="valFull">0</span></div>
+            <div class="bar-row"><span class="icon">❤️</span><div class="track"><div class="fill" id="barMood" style="width:0;background:#ec4899"></div></div><span class="val" id="valMood">0</span></div>
+            <div class="bar-row"><span class="icon">🛁</span><div class="track"><div class="fill" id="barClean" style="width:0;background:#38bdf8"></div></div><span class="val" id="valClean">0</span></div>
+            <div class="bar-row"><span class="icon">⚡</span><div class="track"><div class="fill" id="barEnergy" style="width:0;background:#2ecc71"></div></div><span class="val" id="valEnergy">0</span></div>
+          </div>
+          <div class="actions">
+            <button class="act-btn" id="actFeed"><span class="e">🍖</span>喂食</button>
+            <button class="act-btn" id="actClean"><span class="e">🛁</span>清洁</button>
+            <button class="act-btn" id="actPlay"><span class="e">🎾</span>玩耍</button>
+            <button class="act-btn" id="actSleep"><span class="e">😴</span>睡觉</button>
+          </div>
+          <div class="pet-extras">
+            <button id="petRename">✏️ 改名</button>
+            <button id="petShop">🏪 宠物商店</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>打卡赚积分 <span class="tag">完成今日打卡获得奖励</span></h2>
+          <div class="ring">
+            <div class="num" id="petTodayDone">0</div>
+            <div class="sub">/ <span id="petTodayTotal">0</span> 项已完成 · 每次打卡 +10 积分 +1 食物</div>
+          </div>
+          <div class="bar" style="margin-bottom:10px"><div id="petTodayBar" style="width:0"></div></div>
+          <div id="petTaskHint" style="color:var(--muted);font-size:13px">去「今日打卡」完成项目，回来照顾宠物吧～</div>
+        </div>
+      </section>
+
+      <!-- TODAY -->
+      <section class="view" id="view-today">
+        <div class="panel">
+          <h2>今天进度 <span class="tag" id="todaySub">—</span></h2>
+          <div class="ring">
+            <div class="num" id="todayDone">0</div>
+            <div class="sub">/ <span id="todayTotal">0</span> 项已完成</div>
+          </div>
+          <div class="bar" style="margin-bottom:16px"><div id="todayBar" style="width:0"></div></div>
+          <div id="todayList"></div>
+        </div>
+      </section>
+
+      <!-- ITEMS -->
+      <section class="view" id="view-items">
+        <div class="panel">
+          <h2>我的打卡项目 <span class="tag" id="itemCount"></span></h2>
+          <div id="itemList"></div>
+          <button class="btn btn-primary" id="itemsAdd" style="margin-top:16px">+ 添加打卡项目</button>
+        </div>
+      </section>
+
+      <!-- STATS -->
+      <section class="view" id="view-stats">
+        <div class="grid stats" id="overallStats"></div>
+        <div class="panel">
+          <h2>各项目表现</h2>
+          <div class="grid" id="perItemStats" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div>
+        </div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section class="view" id="view-calendar">
+        <div class="panel">
+          <h2>打卡日历 <span class="tag">按月看坚持情况</span></h2>
+          <div class="cal-head">
+            <button class="mv" id="calPrev">‹</button>
+            <div class="ml" id="calLabel"></div>
+            <button class="mv" id="calNext">›</button>
+            <button class="today-link" id="calToday">回到今天</button>
+            <select class="cal-sel" id="calSel"></select>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend">
+            <span><i style="background:#eafaf0;border:1px solid #bdeccd"></i> 全部完成</span>
+            <span><i style="background:#fff7e0;border:1px solid #ffe39a"></i> 部分完成</span>
+            <span><i style="background:#ffeef0;border:1px solid #ffc9cf"></i> 当天漏打</span>
+            <span><i style="background:#f4f6fb;border:1px solid #eef1f7"></i> 无安排</span>
+          </div>
+          <div class="cal-detail" id="calDetail"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="bottomtab">
+    <button class="active" data-view="pet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 0 0 9-9c0-4.97-4.03-9-9-9s-9 4.03-9 9 9 9 9 9z"/><path d="M9 12h.01M15 12h.01M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/></svg>宠物
+    </button>
+    <button data-view="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>打卡
+    </button>
+    <button data-view="items">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>项目
+    </button>
+    <button data-view="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>日历
+    </button>
+  </nav>
+</div>
+
+<!-- modal -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="modalTitle">添加打卡项目</h3>
+    <div class="fld">
+      <label>项目名称</label>
+      <input type="text" id="fName" placeholder="例如：晨跑 / 背单词 / 喝水 / 阅读" />
+    </div>
+    <div class="fld">
+      <label>图标（emoji）</label>
+      <input type="text" id="fEmoji" value="📌" maxlength="4" />
+      <div class="hint">随便填一个 emoji，如 🏃 💧 📚 🦷 ☕ 🧘</div>
+    </div>
+    <div class="fld">
+      <label>颜色</label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="fld">
+      <label>打卡频率</label>
+      <select id="fFreq">
+        <option value="daily">每天</option>
+        <option value="weekdays">工作日（周一至周五）</option>
+        <option value="weekends">周末（周六周日）</option>
+        <option value="custom">自定义星期</option>
+        <option value="xperweek">每周 N 次</option>
+      </select>
+    </div>
+    <div class="fld" id="customDaysWrap" style="display:none">
+      <label>选择星期</label>
+      <div class="days" id="dayPick"></div>
+    </div>
+    <div class="fld" id="xperweekWrap" style="display:none">
+      <label>每周次数</label>
+      <input type="number" id="fPerWeek" min="1" max="7" value="3" />
+      <div class="hint">每周至少完成 N 次即可，每天都能打</div>
+    </div>
+    <div class="fld">
+      <label>打卡时间（提醒用）</label>
+      <input type="time" id="fTime" value="21:00" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="mCancel">取消</button>
+      <button class="btn btn-primary" id="mSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- pet shop modal -->
+<div class="mask" id="shopMask">
+  <div class="modal">
+    <h3>🏪 宠物商店</h3>
+    <div class="bk-note" style="margin-bottom:14px">用积分兑换新宠物。已拥有的宠物会显示「已拥有」。</div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="shopClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- pet rename modal -->
+<div class="mask" id="renameMask">
+  <div class="modal">
+    <h3>✏️ 给宠物改名</h3>
+    <div class="fld">
+      <label>新名字</label>
+      <input type="text" id="renameInput" class="pet-name-input" placeholder="例如：毛球、团团" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="renameCancel">取消</button>
+      <button class="btn btn-primary" id="renameSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- backup modal -->
+<div class="mask" id="bkMask">
+  <div class="modal">
+    <h3>备份与恢复</h3>
+    <div class="bk-actions">
+      <div class="bk-card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4f7cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
+        <div class="body">
+          <div class="t">导出备份</div>
+          <div class="d">把当前所有打卡项目和历史记录存成一个 .json 文件。换新设备时，把它传过去再用「导入」恢复。</div>
+          <div class="acts"><button class="btn btn-primary" id="expBtn" style="flex:0 0 auto;padding:9px 18px">导出到文件</button></div>
+        </div>
+      </div>
+      <div class="bk-card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4f7cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 8l5-5 5 5M12 3v12"/></svg></div>
+        <div class="body">
+          <div class="t">导入恢复</div>
+          <div class="d">从备份文件恢复数据（会覆盖当前设备上的全部数据）。</div>
+          <div class="acts">
+            <input type="file" id="impFile" accept="application/json,.json" style="display:none" />
+            <button class="btn btn-ghost" id="impPick" style="flex:0 0 auto;padding:9px 18px">选择文件</button>
+          </div>
+          <div class="bk-note" id="impInfo"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="bkClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- storage ---------- */
+const KEY='checkin_v1';
+const COLORS=['#e8eeff','#eafaf0','#fff4e0','#fdeaf3','#efe8ff','#e6f7f9','#fdeee0','#eef0f3'];
+function load(){
+  try{return JSON.parse(localStorage.getItem(KEY))||null;}catch(e){return null;}
+}
+let state=load()||{items:[]};
+function initPet(){
+  if(!state.pet){
+    state.pet={id:'rabbit',name:'兔斯基',level:1,exp:25,expMax:50,fullness:60,mood:70,clean:60,energy:80,lastCare:Date.now(),sleepUntil:0};
+  }
+  if(typeof state.points!=='number')state.points=0;
+  if(typeof state.food!=='number')state.food=3;
+  if(!Array.isArray(state.ownedPets))state.ownedPets=['rabbit'];
+}
+initPet();
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+
+/* ---------- helpers ---------- */
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function todayStr(){return ymd(new Date());}
+function rnd(n){return Math.floor(Math.random()*n);}
+const DOW=['周日','周一','周二','周三','周四','周五','周六'];
+function isDue(item,d){
+  const dow=d.getDay();
+  const f=item.freq;
+  if(f.type==='daily')return true;
+  if(f.type==='weekdays')return dow>=1&&dow<=5;
+  if(f.type==='weekends')return dow===0||dow===6;
+  if(f.type==='custom')return f.days.includes(dow);
+  if(f.type==='xperweek')return true;
+  return true;
+}
+function freqText(item){
+  const f=item.freq;
+  if(f.type==='daily')return '每天';
+  if(f.type==='weekdays')return '工作日';
+  if(f.type==='weekends')return '周末';
+  if(f.type==='custom')return f.days.map(i=>DOW[i].replace('周','')).join('');
+  if(f.type==='xperweek')return '每周'+f.perWeek+'次';
+  return '';
+}
+function doneToday(item){return !!item.records[todayStr()];}
+function streak(item){
+  let s=0;let d=new Date();
+  if(!item.records[ymd(d)])d.setDate(d.getDate()-1);
+  let guard=0;
+  while(guard++<400){
+    if(isDue(item,d)){
+      if(item.records[ymd(d)]){s++;d.setDate(d.getDate()-1);}
+      else break;
+    }else{d.setDate(d.getDate()-1);}
+  }
+  return s;
+}
+function rate(item){
+  let due=0,done=0;let d=new Date(item.createdAt);const t=new Date();
+  let guard=0;
+  while(d<=t&&guard++<800){
+    if(isDue(item,d)){due++;if(item.records[ymd(d)])done++;}
+    d.setDate(d.getDate()+1);
+  }
+  return due?Math.round(done/due*100):0;
+}
+function weekDone(item){ // completions in current week (Mon-Sun)
+  const now=new Date();const dow=(now.getDay()+6)%7; // Mon=0
+  const mon=new Date(now);mon.setDate(now.getDate()-dow);mon.setHours(0,0,0,0);
+  let c=0;for(const k in item.records){if(item.records[k]){const dt=new Date(k);if(dt>=mon)c++;}}
+  return c;
+}
+function totalDone(item){let c=0;for(const k in item.records)if(item.records[k])c++;return c;}
+
+/* ---------- pet system ---------- */
+const PETS=[
+  {id:'rabbit',name:'小兔子',emoji:'🐰',desc:'喜欢闻花香的温柔小兔兔',cost:0},
+  {id:'squirrel',name:'小松鼠',emoji:'🐿️',desc:'爱玩松果的小机灵，手脚敏捷',cost:70},
+  {id:'cat',name:'喵喵星',emoji:'🐱',desc:'来自星星的猫咪，慵懒又优雅',cost:50},
+  {id:'dog',name:'小柴犬',emoji:'🐶',desc:'永远元气满满的小跟班',cost:80},
+  {id:'dino',name:'小恐龙',emoji:'🦖',desc:'会喷火的史前小霸王，勇敢爱冒险',cost:100},
+  {id:'panda',name:'小熊猫',emoji:'🐼',desc:'圆滚滚的竹子爱好者',cost:120}
+];
+const LVL_TITLE=['新朋友','小伙伴','好帮手','小达人','小明星','小冠军','传说级'];
+function currentPet(){return PETS.find(p=>p.id===state.pet.id)||PETS[0];}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+function levelTitle(lvl){return LVL_TITLE[Math.min(lvl-1,LVL_TITLE.length-1)]||'满级大神';}
+function decayPet(){
+  const now=Date.now();
+  const hours=(now-state.pet.lastCare)/(1000*60*60);
+  if(hours>0.5){
+    state.pet.fullness=clamp(state.pet.fullness-hours*5,0,100);
+    state.pet.mood=clamp(state.pet.mood-hours*3,0,100);
+    state.pet.clean=clamp(state.pet.clean-hours*4,0,100);
+    if(state.pet.sleepUntil&&now>state.pet.sleepUntil){
+      state.pet.energy=clamp(state.pet.energy+hours*8,0,100);
+    }
+    state.pet.lastCare=now;
+    save();
+  }
+}
+function addExp(n){
+  state.pet.exp+=n;
+  while(state.pet.exp>=state.pet.expMax){
+    state.pet.exp-=state.pet.expMax;
+    state.pet.level++;
+    state.pet.expMax=state.pet.level*50;
+    toast('宠物升级啦！Lv.'+state.pet.level+' '+levelTitle(state.pet.level)+' 🎉');
+  }
+  save();
+}
+function petSpeech(){
+  const p=state.pet;
+  if(p.sleepUntil&&Date.now()<p.sleepUntil)return 'zzz… 我在睡觉，别吵我 💤';
+  if(p.fullness<30)return '我好饿呀，快给我喂食吧 🍖';
+  if(p.clean<30)return '身上有点脏，帮我洗个澡吧 🛁';
+  if(p.mood<30)return '有点无聊，陪我玩一会儿吧 🎾';
+  if(p.energy<30)return '好累哦，我想睡觉了 😴';
+  if(p.fullness>80&&p.mood>80&&p.clean>80)return '今天状态超棒！主人最棒啦 ✨';
+  return '主人，今天也要打卡哦～';
+}
+function renderPet(){
+  decayPet();
+  const p=state.pet, petDef=currentPet();
+  document.getElementById('pointNum').textContent=state.points;
+  document.getElementById('petEmoji').textContent=petDef.emoji;
+  document.getElementById('petName').textContent=p.name;
+  document.getElementById('petLvl').textContent='Lv.'+p.level+' '+levelTitle(p.level);
+  document.getElementById('petSpeech').textContent=petSpeech();
+  document.getElementById('barExp').style.width=Math.round(p.exp/p.expMax*100)+'%';
+  document.getElementById('valExp').textContent=p.exp+'/'+p.expMax;
+  document.getElementById('barFull').style.width=Math.round(p.fullness)+'%';
+  document.getElementById('valFull').textContent=Math.round(p.fullness);
+  document.getElementById('barMood').style.width=Math.round(p.mood)+'%';
+  document.getElementById('valMood').textContent=Math.round(p.mood);
+  document.getElementById('barClean').style.width=Math.round(p.clean)+'%';
+  document.getElementById('valClean').textContent=Math.round(p.clean);
+  document.getElementById('barEnergy').style.width=Math.round(p.energy)+'%';
+  document.getElementById('valEnergy').textContent=Math.round(p.energy);
+  const sleeping=p.sleepUntil&&Date.now()<p.sleepUntil;
+  document.getElementById('petEmoji').classList.toggle('sleep',sleeping);
+  document.getElementById('actSleep').disabled=sleeping;
+  // today progress mini
+  const due=state.items.filter(it=>isDue(it,new Date()));
+  const doneN=due.filter(doneToday).length;
+  document.getElementById('petTodayDone').textContent=doneN;
+  document.getElementById('petTodayTotal').textContent=due.length;
+  document.getElementById('petTodayBar').style.width=due.length?Math.round(doneN/due.length*100)+'%':'0%';
+  document.getElementById('petTaskHint').textContent=due.length?('今日还有 '+(due.length-doneN)+' 项打卡，完成即可赚积分和食物照顾宠物'):'今天没有打卡安排，去「我的项目」添加吧';
+}
+function actFeed(){
+  if(state.food>0){state.food--;}else if(state.points>=5){state.points-=5;}
+  else{toast('积分和食物都不够啦，先去打卡吧！');return;}
+  state.pet.fullness=clamp(state.pet.fullness+30,0,100);
+  addExp(5);
+  save();renderPet();
+  toast('喂食成功！饱食 +30 🍖');
+}
+function actClean(){
+  state.pet.clean=clamp(state.pet.clean+40,0,100);
+  addExp(3);
+  save();renderPet();
+  toast('清洁完成！干净又香香 🛁');
+}
+function actPlay(){
+  if(state.pet.energy<15){toast('体力不够了，让宠物睡一觉吧');return;}
+  state.pet.energy=clamp(state.pet.energy-15,0,100);
+  state.pet.mood=clamp(state.pet.mood+35,0,100);
+  addExp(8);
+  save();renderPet();
+  toast('玩耍好开心！心情 +35 🎾');
+}
+function actSleep(){
+  const now=Date.now();
+  state.pet.sleepUntil=now+1000*60*60*2;
+  state.pet.energy=clamp(state.pet.energy+50,0,100);
+  save();renderPet();
+  toast('宠物去睡觉了，2 小时后再叫醒它吧 💤');
+}
+function openShop(){renderShop();document.getElementById('shopMask').classList.add('show');}
+function closeShop(){document.getElementById('shopMask').classList.remove('show');}
+function renderShop(){
+  document.getElementById('shopGrid').innerHTML=PETS.map(p=>{
+    const owned=state.ownedPets.includes(p.id);
+    const active=state.pet.id===p.id;
+    return `<div class="shop-card ${owned?'owned':''}" data-id="${p.id}">
+      <div class="pe">${p.emoji}</div>
+      <div class="pn">${p.name}</div>
+      <div class="pd">${p.desc}</div>
+      <div class="pc">${owned?(active?'✓ 当前出战':'已拥有'):'🌟 '+p.cost}</div>
+      ${owned?'':`<button class="btn btn-primary" style="width:100%;margin-top:6px;font-size:13px;padding:8px">${state.points>=p.cost?'购买':'积分不足'}</button>`}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#shopGrid .shop-card').forEach(card=>{
+    card.onclick=(e)=>{
+      if(e.target.tagName==='BUTTON')return;
+      const id=card.dataset.id;
+      if(state.ownedPets.includes(id)){switchPet(id);closeShop();}
+    };
+    const btn=card.querySelector('button');
+    if(btn)btn.onclick=()=>buyPet(card.dataset.id);
+  });
+}
+function buyPet(id){
+  const p=PETS.find(x=>x.id===id);if(!p||state.ownedPets.includes(id))return;
+  if(state.points<p.cost){toast('积分不够，再去打卡赚一点吧');return;}
+  state.points-=p.cost;
+  state.ownedPets.push(id);
+  switchPet(id);
+  save();renderShop();renderPet();
+  toast('恭喜获得 '+p.name+'！🎉');
+}
+function switchPet(id){
+  if(!state.ownedPets.includes(id))return;
+  const p=PETS.find(x=>x.id===id);
+  state.pet.id=id;
+  state.pet.name=p.name;
+  save();renderPet();
+}
+function openRename(){document.getElementById('renameInput').value=state.pet.name;document.getElementById('renameMask').classList.add('show');}
+function closeRename(){document.getElementById('renameMask').classList.remove('show');}
+function saveRename(){
+  const n=document.getElementById('renameInput').value.trim();
+  if(!n){toast('名字不能为空');return;}
+  state.pet.name=n;save();renderPet();closeRename();toast('改名成功 ✏️');
+}
+
+/* ---------- nav ---------- */
+const titles={pet:'我的宠物',today:'今日打卡',items:'我的项目',stats:'统计',calendar:'打卡日历'};
+document.querySelectorAll('[data-view]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const v=b.dataset.view;
+    document.querySelectorAll('.nav-btn').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+    document.querySelectorAll('.bottomtab button').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+    document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+    document.getElementById('view-'+v).classList.add('active');
+    document.getElementById('viewTitle').textContent=titles[v];
+    if(v==='pet')renderPet();
+    if(v==='stats')renderStats();
+    if(v==='items')renderItems();
+    if(v==='calendar')renderCalendar();
+  });
+});
+
+/* ---------- today ---------- */
+function renderToday(){
+  const list=document.getElementById('todayList');
+  const due=state.items.filter(it=>isDue(it,new Date()));
+  const done=due.filter(doneToday).length;
+  document.getElementById('todayDone').textContent=done;
+  document.getElementById('todayTotal').textContent=due.length;
+  document.getElementById('todaySub').textContent=due.length?('已完成 '+done+' / '+due.length):'今天没有安排';
+  const pct=due.length?Math.round(done/due.length*100):0;
+  document.getElementById('todayBar').style.width=pct+'%';
+  if(!due.length){list.innerHTML='<div class="empty">今天没有打卡项目 🎉<br>去「我的项目」添加，或点右上角「+ 添加项目」</div>';return;}
+  const nowMin=()=>{const n=new Date();return n.getHours()*60+n.getMinutes();};
+  list.innerHTML=due.map(it=>{
+    const t=it.time?it.time.split(':').map(Number):null;
+    const overdue=t&&!doneToday(it)&&(t[0]*60+t[1])<nowMin();
+    const st=streak(it);
+    return `<div class="ci ${doneToday(it)?'done':''}" data-id="${it.id}">
+      <div class="emoji" style="background:${it.color}">${it.emoji}</div>
+      <div class="body">
+        <div class="title">${esc(it.name)} ${st>0?`<span class="badge streak">🔥连${st}天</span>`:''} ${overdue?'<span class="badge over">已过点</span>':''}</div>
+        <div class="meta">
+          <span class="badge">${freqText(it)}</span>
+          <span>⏰ ${it.time||'随时'}</span>
+        </div>
+      </div>
+      <div class="check" data-act="check">${doneToday(it)?'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>':''}</div>
+      <button class="del" data-act="del" title="删除">✕</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.ci').forEach(row=>{
+    const id=row.dataset.id;
+    row.querySelector('[data-act=check]').onclick=()=>toggleCheck(id);
+    row.querySelector('[data-act=del]').onclick=(e)=>{e.stopPropagation();removeItem(id);};
+  });
+}
+function toggleCheck(id){
+  const it=state.items.find(x=>x.id===id);if(!it)return;
+  const t=todayStr();
+  if(it.records[t]){delete it.records[t];toast('已取消今天打卡');}
+  else{it.records[t]=true;state.points+=10;state.food+=1;toast('打卡成功 🎉 +10 积分 +1 食物');}
+  save();renderToday();
+}
+
+/* ---------- items ---------- */
+function renderItems(){
+  const list=document.getElementById('itemList');
+  document.getElementById('itemCount').textContent=state.items.length?('共 '+state.items.length+' 项'):'';
+  if(!state.items.length){list.innerHTML='<div class="empty">还没有打卡项目<br>点下方「+ 添加打卡项目」开始</div>';return;}
+  list.innerHTML=state.items.map(it=>`<div class="mi" data-id="${it.id}">
+    <div class="emoji" style="background:${it.color}">${it.emoji}</div>
+    <div class="body">
+      <div class="title">${esc(it.name)}</div>
+      <div class="meta">${freqText(it)} · ⏰ ${it.time||'随时'} · 🔥连${streak(it)}天 · 累计${totalDone(it)}次</div>
+    </div>
+    <button class="ghost" data-act="edit">编辑</button>
+    <button class="del" data-act="del" title="删除">✕</button>
+  </div>`).join('');
+  list.querySelectorAll('.mi').forEach(row=>{
+    const id=row.dataset.id;
+    row.querySelector('[data-act=edit]').onclick=()=>openModal(id);
+    row.querySelector('[data-act=del]').onclick=()=>removeItem(id);
+  });
+}
+function removeItem(id){
+  const it=state.items.find(x=>x.id===id);if(!it)return;
+  if(!confirm('删除打卡项目「'+it.name+'」？历史记录也会一并清除。'))return;
+  state.items=state.items.filter(x=>x.id!==id);
+  save();renderToday();renderItems();toast('已删除');
+}
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const total=state.items.reduce((a,it)=>a+totalDone(it),0);
+  const todayDue=state.items.filter(it=>isDue(it,new Date())).length;
+  const todayDoneN=state.items.filter(it=>isDue(it,new Date())&&doneToday(it)).length;
+  document.getElementById('overallStats').innerHTML=`
+    <div class="stat"><div class="n">${state.items.length}</div><div class="l">打卡项目数</div></div>
+    <div class="stat"><div class="n">${todayDoneN}/${todayDue}</div><div class="l">今日完成</div></div>
+    <div class="stat"><div class="n">${total}</div><div class="l">累计打卡次数</div></div>`;
+  const box=document.getElementById('perItemStats');
+  if(!state.items.length){box.innerHTML='<div class="empty">暂无数据</div>';return;}
+  box.innerHTML=state.items.map(it=>{
+    const st=streak(it);const rt=rate(it);
+    const xw=it.freq.type==='xperweek';
+    return `<div class="scard">
+      <div class="top"><div class="emoji" style="background:${it.color}">${it.emoji}</div>
+        <div><div class="name">${esc(it.name)}</div><div class="freq">${freqText(it)} · ⏰ ${it.time||'随时'}</div></div></div>
+      <div class="row"><span>当前连续</span><b>🔥 ${st} 天</b></div>
+      <div class="row"><span>累计完成</span><b>${totalDone(it)} 次</b></div>
+      ${xw?`<div class="row"><span>本周进度</span><b>${weekDone(it)} / ${it.freq.perWeek} 次</b></div>`:''}
+      <div class="row"><span>完成率</span><b>${rt}%</b></div>
+      <div class="bar"><div style="width:${rt}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- modal ---------- */
+let editId=null, selColor=COLORS[0];
+function buildSwatches(){
+  document.getElementById('swatches').innerHTML=COLORS.map((c,i)=>`<div class="sw ${i===0?'sel':''}" data-c="${c}" style="background:${c}"></div>`).join('');
+  document.querySelectorAll('#swatches .sw').forEach(s=>s.onclick=()=>{
+    selColor=s.dataset.c;
+    document.querySelectorAll('#swatches .sw').forEach(x=>x.classList.remove('sel'));
+    s.classList.add('sel');
+  });
+}
+const DOWS=[['周一',1],['周二',2],['周三',3],['周四',4],['周五',5],['周六',6],['周日',0]];
+function buildDays(){
+  document.getElementById('dayPick').innerHTML=DOWS.map(([n,v])=>`<label><input type="checkbox" value="${v}"><span class="d">${n}</span></label>`).join('');
+}
+document.getElementById('fFreq').addEventListener('change',()=>{
+  document.getElementById('customDaysWrap').style.display=document.getElementById('fFreq').value==='custom'?'block':'none';
+  document.getElementById('xperweekWrap').style.display=document.getElementById('fFreq').value==='xperweek'?'block':'none';
+});
+function openModal(id){
+  editId=id||null;
+  document.getElementById('modalTitle').textContent=id?'编辑打卡项目':'添加打卡项目';
+  const it=id?state.items.find(x=>x.id===id):null;
+  document.getElementById('fName').value=it?it.name:'';
+  document.getElementById('fEmoji').value=it?it.emoji:'📌';
+  selColor=it?it.color:COLORS[0];
+  document.querySelectorAll('#swatches .sw').forEach(s=>s.classList.toggle('sel',s.dataset.c===selColor));
+  document.getElementById('fFreq').value=it?it.freq.type:'daily';
+  document.getElementById('customDaysWrap').style.display=it&&it.freq.type==='custom'?'block':'none';
+  document.getElementById('xperweekWrap').style.display=it&&it.freq.type==='xperweek'?'block':'none';
+  if(it&&it.freq.type==='custom'){
+    const set=new Set(it.freq.days);
+    document.querySelectorAll('#dayPick input').forEach(c=>c.checked=set.has(parseInt(c.value)));
+  }else{document.querySelectorAll('#dayPick input').forEach(c=>c.checked=false);}
+  document.getElementById('fPerWeek').value=it&&it.freq.type==='xperweek'?it.freq.perWeek:3;
+  document.getElementById('fTime').value=it?it.time:'21:00';
+  document.getElementById('mask').classList.add('show');
+}
+function closeModal(){document.getElementById('mask').classList.remove('show');}
+function saveModal(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){toast('请填写项目名称');return;}
+  const emoji=document.getElementById('fEmoji').value.trim()||'📌';
+  const type=document.getElementById('fFreq').value;
+  let freq={type};
+  if(type==='custom'){
+    const days=[...document.querySelectorAll('#dayPick input')].filter(c=>c.checked).map(c=>parseInt(c.value));
+    if(!days.length){toast('请至少选一个星期');return;}
+    freq.days=days;
+  }
+  if(type==='xperweek'){
+    let n=parseInt(document.getElementById('fPerWeek').value,10);
+    if(!n||n<1)n=1;if(n>7)n=7;
+    freq.perWeek=n;
+  }
+  const time=document.getElementById('fTime').value||'';
+  if(editId){
+    const it=state.items.find(x=>x.id===editId);
+    Object.assign(it,{name,emoji,color:selColor,freq,time});
+    toast('已更新');
+  }else{
+    state.items.push({id:'c'+Date.now()+rnd(1000),name,emoji,color:selColor,freq,time,createdAt:Date.now(),records:{}});
+    toast('已添加');
+  }
+  save();closeModal();renderToday();renderItems();
+}
+document.getElementById('topAdd').onclick=()=>openModal();
+document.getElementById('sidebarAdd').onclick=()=>openModal();
+document.getElementById('itemsAdd').onclick=()=>openModal();
+document.getElementById('mCancel').onclick=closeModal;
+document.getElementById('mSave').onclick=saveModal;
+document.getElementById('mask').addEventListener('click',e=>{if(e.target.id==='mask')closeModal();});
+
+/* ---------- util ---------- */
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+let toastT;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800);}
+
+/* ---------- calendar ---------- */
+let calView={y:new Date().getFullYear(),m:new Date().getMonth(),item:'all'};
+function calItems(){return calView.item==='all'?state.items:state.items.filter(it=>it.id===calView.item);}
+function statusOn(items,ds,dt){
+  const due=items.filter(it=>isDue(it,dt));
+  if(!due.length)return 'none';
+  const doneN=due.filter(it=>it.records[ds]).length;
+  if(doneN===0)return 'missed';
+  if(doneN===due.length)return 'done';
+  return 'partial';
+}
+function renderCalendar(){
+  const sel=document.getElementById('calSel');
+  sel.innerHTML='<option value="all">全部项目</option>'+state.items.map(it=>`<option value="${it.id}">${esc(it.name)}</option>`).join('');
+  sel.value=calView.item;
+  const y=calView.y,m=calView.m;
+  document.getElementById('calLabel').textContent=y+'年'+(m+1)+'月';
+  const first=new Date(y,m,1);
+  const startDow=(first.getDay()+6)%7; // Monday first
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const items=calItems();
+  const todayDs=todayStr();
+  let html=['一','二','三','四','五','六','日'].map(w=>`<div class="wd">${w}</div>`).join('');
+  const cells=[];
+  for(let i=0;i<startDow;i++)cells.push(null);
+  for(let d=1;d<=daysInMonth;d++)cells.push(d);
+  cells.forEach(d=>{
+    if(d===null){html+=`<div class="cal-cell blank"></div>`;return;}
+    const dt=new Date(y,m,d);const ds=ymd(dt);
+    const st=statusOn(items,ds,dt);
+    const mark=st==='done'?'✓':st==='missed'?'✗':st==='partial'?'◐':'';
+    const isToday=ds===todayDs?'box-shadow:0 0 0 2px var(--primary) inset;':'';
+    const cls=st==='none'?'none':st;
+    html+=`<div class="cal-cell ${cls}" data-d="${ds}" style="${isToday}"><div class="dnum">${d}</div><div class="mark" style="color:${st==='done'?'#1e9e57':st==='missed'?'#e74c3c':st==='partial'?'#a9790a':'transparent'}">${mark}</div></div>`;
+  });
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML=html;
+  grid.querySelectorAll('.cal-cell[data-d]').forEach(c=>c.onclick=()=>showDayDetail(c.dataset.d));
+  const det=document.getElementById('calDetail');
+  if(!det.dataset.d)det.innerHTML='<div class="empty">点任意日期查看当天安排</div>';
+}
+function showDayDetail(ds){
+  document.getElementById('calDetail').dataset.d=ds;
+  const dt=new Date(ds+'T00:00:00');
+  const items=calItems();
+  const due=items.filter(it=>isDue(it,dt));
+  const box=document.getElementById('calDetail');
+  if(!due.length){box.innerHTML=`<h3>${ds}</h3><div class="empty">这天没有打卡安排</div>`;return;}
+  box.innerHTML=`<h3>${ds} · 共 ${due.length} 项安排</h3>`+due.map(it=>{
+    const done=!!it.records[ds];
+    return `<div class="ci ${done?'done':''}"><div class="emoji" style="background:${it.color}">${it.emoji}</div><div class="body"><div class="title">${esc(it.name)}</div><div class="meta"><span class="badge" style="${done?'background:#eafaf0;color:#1e9e57':''}">${done?'已完成':'未完成'}</span></div></div><div class="check" style="${done?'background:var(--ok);border-color:var(--ok)':''}">${done?'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>':''}</div></div>`;
+  }).join('');
+}
+document.getElementById('calPrev').onclick=()=>{calView.m--;if(calView.m<0){calView.m=11;calView.y--;}renderCalendar();};
+document.getElementById('calNext').onclick=()=>{calView.m++;if(calView.m>11){calView.m=0;calView.y++;}renderCalendar();};
+document.getElementById('calSel').onchange=e=>{calView.item=e.target.value;renderCalendar();};
+document.getElementById('calToday').onclick=()=>{const n=new Date();calView.y=n.getFullYear();calView.m=n.getMonth();renderCalendar();};
+
+/* ---------- backup / restore (export & import JSON) ---------- */
+function openBackup(){document.getElementById('impInfo').textContent='';document.getElementById('bkMask').classList.add('show');}
+function closeBackup(){document.getElementById('bkMask').classList.remove('show');}
+function exportBackup(){
+  var out={app:'baobao-checkin',version:1,exportedAt:new Date().toISOString(),data:state};
+  var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  var ds=todayStr().replace(/-/g,'');
+  a.href=url;a.download='包包打卡-备份-'+ds+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  toast('已导出备份文件');
+}
+function importBackup(file){
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var parsed=JSON.parse(reader.result);
+      var data=(parsed&&parsed.data)?parsed.data:parsed;
+      if(!data||!Array.isArray(data.items))throw new Error('文件格式不正确');
+      var total=data.items.reduce(function(a,it){return a+totalDone(it);},0);
+      if(!confirm('导入将覆盖当前设备上的全部数据（共含 '+data.items.length+' 个项目、'+total+' 条记录）。确定导入吗？'))return;
+      state=data;initPet();save();
+      renderToday();renderItems();renderStats();renderCalendar();renderPet();
+      document.getElementById('impInfo').textContent='✓ 已恢复 '+data.items.length+' 个项目、'+total+' 条打卡记录';
+      toast('导入成功 🎉');
+    }catch(e){document.getElementById('impInfo').textContent='导入失败：'+e.message;toast('导入失败');}
+  };
+  reader.readAsText(file);
+}
+document.getElementById('bkBtn').onclick=openBackup;
+document.getElementById('navBk').onclick=openBackup;
+document.getElementById('bkClose').onclick=closeBackup;
+document.getElementById('bkMask').addEventListener('click',function(e){if(e.target.id==='bkMask')closeBackup();});
+document.getElementById('expBtn').onclick=exportBackup;
+document.getElementById('impPick').onclick=function(){document.getElementById('impFile').click();};
+document.getElementById('impFile').addEventListener('change',function(e){if(e.target.files[0])importBackup(e.target.files[0]);});
+
+/* ---------- init ---------- */
+function initDate(){var d=new Date();document.getElementById('todayDate').textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+DOW[d.getDay()];}
+buildSwatches();buildDays();initDate();
+document.getElementById('actFeed').onclick=actFeed;
+document.getElementById('actClean').onclick=actClean;
+document.getElementById('actPlay').onclick=actPlay;
+document.getElementById('actSleep').onclick=actSleep;
+document.getElementById('petShop').onclick=openShop;
+document.getElementById('shopClose').onclick=closeShop;
+document.getElementById('shopMask').addEventListener('click',e=>{if(e.target.id==='shopMask')closeShop();});
+document.getElementById('petRename').onclick=openRename;
+document.getElementById('renameCancel').onclick=closeRename;
+document.getElementById('renameSave').onclick=saveRename;
+document.getElementById('renameMask').addEventListener('click',e=>{if(e.target.id==='renameMask')closeRename();});
+document.getElementById('petEmoji').onclick=()=>{if(Math.random()>.5)toast('摸摸头～ 心情 +1 ✨');state.pet.mood=clamp(state.pet.mood+1,0,100);save();renderPet();};
+renderPet();
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+
+</script>
+</body>
+</html>
